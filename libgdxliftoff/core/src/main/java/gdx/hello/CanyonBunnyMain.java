@@ -12,7 +12,8 @@ public class CanyonBunnyMain extends Game {
     public void create() {
         batch = new SpriteBatch();
         font = new BitmapFont();
-        this.setScreen(new MainMenuScreen(this));
+        //this.setScreen(new MainMenuScreen(this));
+        this.setScreen(new ThreeDScreen(this));
     }
 
     public void render() {
