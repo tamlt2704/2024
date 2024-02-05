@@ -91,8 +91,17 @@ function App() {
   function save(e) {
     e.preventDefault(); // prevent page reload
     const input = e.target.firstChild;
-    const data = clone(tableData);
-    data[editPosition.row][editPosition.column] = input.value;
+    const data = clone(tableData).map((row) => {
+        if (row[row.length - 1] === editPosition.row) {
+          row[editPosition.column] = input.value;
+        }
+        return row;
+    });
+    //data[editPosition.row][editPosition.column] = input.value;
+    // if (presearchData) {
+    //   const tmpData = clone(presearchData)[editPosition.row][editPosition.column] = input.value;
+    //   setPresearchData(tmpData);
+    // }
     setTableData(data);
     setEdit(false);
   }
@@ -120,11 +129,46 @@ function App() {
     }
   }
 
+  function downloadCSV(e) {
+    download('csv', e);
+  }
+
+  function downloadJSON(e) {
+    download('json', e);
+  }
+
+  function download(format, ev) {
+    const data = clone(tableData).map((row) => {
+      row.pop();
+      return row;
+    });
+
+    const contents = format === 'json' 
+    ? JSON.stringify(data)
+    : data.reduce((result, row) => {
+      return (
+        result +
+        row.reduce((rowContent, cellContent, idx) => {
+          const cell = cellContent.replace(/"/g, '""');
+          const delimiter = idx < row.length - 1 ? ',' : '';
+          return `${rowContent}"${cellContent}"${delimiter}`;
+        }, '') + '\n'
+      );
+    });
+
+    const url = window.URL || window.webkitURL;
+    const blob = new Blob([contents], {type: 'text/' + format});
+    ev.target.href = URL.createObjectURL(blob);
+    ev.target.download = 'data.' + format;
+  }
+
   return (
     <div>
       <button className='toolbar' onClick={toggleSearch}>
         {search ? 'Hide Search' : 'Show Search'}
       </button>
+      <a href='data.json' onClick={downloadJSON}>Export JSON</a>
+      <a href='data.csv' onClick={downloadCSV}>Export CSV</a>
       <table>
         <thead onClick={sort}>
           <tr> 
