@@ -50,6 +50,8 @@ function App() {
   const [tableData, setTableData] = useState(data);
   const [sortBy, setSortBy] = useState();
   const [descending, setDescending] = useState(false);
+  const [editPosition, setEditPosition] = useState();
+  const [edit, setEdit] = useState(false);
 
   function sort(e) {
     const column = e.target.cellIndex;
@@ -59,7 +61,7 @@ function App() {
     
     console.log(`sort by column ${column}`)
 
-    const sortData = clone(data);
+    const sortData = clone(tableData);
     sortData.sort((a,b) => {
       if (a[column] == b[column]) {
         return 0;
@@ -74,32 +76,62 @@ function App() {
     setTableData(sortData);
   }
 
+  function showEditor(e) {
+    setEditPosition({
+      'row': parseInt(e.target.parentNode.dataset.row, 10),
+      'column': e.target.cellIndex
+    })
+    setEdit(true);
+  }
+
+  function save(e) {
+    e.preventDefault(); // prevent page reload
+    const input = e.target.firstChild;
+    const data = clone(tableData);
+    data[editPosition.row][editPosition.column] = input.value;
+    setTableData(data);
+    setEdit(false);
+  }
+
   return (
-    <table>
-      <thead onClick={sort}>
-        <tr> 
-          {
-          headers.map((title, idx) => {
-            if (sortBy === idx) {
-              title += descending ? ' \u2191' : ' \u2193';
-            }
-            return (
-            <th key={idx}> {title} </th>
-            );
-          })
-          } 
-        </tr>
-      </thead>
-      <tbody>
-        {tableData.map((row, idx) => (
-          <tr key={idx}>
-            {row.map((cell, idx) => (
-              <td key={idx}> {cell} </td>
-            ))}
+    <>
+      <table>
+        <thead onClick={sort}>
+          <tr> 
+            {
+            headers.map((title, idx) => {
+              if (sortBy === idx) {
+                title += descending ? ' \u2191' : ' \u2193';
+              }
+              return (
+              <th key={idx}> {title} </th>
+              );
+            })
+            } 
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody onDoubleClick={showEditor}>
+          {tableData.map((row, rowidx) => (
+            <tr key={rowidx} data-row={rowidx}>
+              {row.map((cell, columnidx) => {
+
+                  if (edit && editPosition.row === rowidx && editPosition.column === columnidx) {
+                    cell = (
+                      <form onSubmit={save}>
+                        <input type='text' defaultValue={cell}/>
+                      </form>
+                    )   
+                  }
+
+                  return (
+                    <td key={columnidx}> {cell} </td>
+                  );
+                })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 
