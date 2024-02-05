@@ -1,5 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
+import { useState } from 'react';
 
 function App() {
   const headers = ['Book', 'Author', 'Language', 'Published', 'Sales'];
@@ -42,18 +43,55 @@ function App() {
     ['The Hobbit', 'J. R. R. Tolkien', 'English', '1937', '100 million'],
   ];
 
+  function clone(o) {
+    return JSON.parse(JSON.stringify(o));
+  }
 
-  console.log(data);
+  const [tableData, setTableData] = useState(data);
+  const [sortBy, setSortBy] = useState();
+  const [descending, setDescending] = useState(false);
+
+  function sort(e) {
+    const column = e.target.cellIndex;
+
+    setDescending(sortBy === column && !descending);
+    setSortBy(column);
+    
+    console.log(`sort by column ${column}`)
+
+    const sortData = clone(data);
+    sortData.sort((a,b) => {
+      if (a[column] == b[column]) {
+        return 0;
+      }
+
+      return descending ?
+        a[column] > b[column] ? 1 : -1 :
+        a[column] > b[column] ? -1 : 1;
+    });
+
+
+    setTableData(sortData);
+  }
 
   return (
     <table>
-      <thead> 
+      <thead onClick={sort}>
         <tr> 
-          {headers.map((title, idx) => <th key={idx}> {title} </th>)} 
+          {
+          headers.map((title, idx) => {
+            if (sortBy === idx) {
+              title += descending ? ' \u2191' : ' \u2193';
+            }
+            return (
+            <th key={idx}> {title} </th>
+            );
+          })
+          } 
         </tr>
       </thead>
       <tbody>
-        {data.map((row, idx) => (
+        {tableData.map((row, idx) => (
           <tr key={idx}>
             {row.map((cell, idx) => (
               <td key={idx}> {cell} </td>
