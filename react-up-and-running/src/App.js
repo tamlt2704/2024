@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 function App() {
   const headers = ['Book', 'Author', 'Language', 'Published', 'Sales'];
-  const data = [
+  const initialData = [
     [
       'A Tale of Two Cities',
       'Charles Dickens',
@@ -43,6 +43,8 @@ function App() {
     ['The Hobbit', 'J. R. R. Tolkien', 'English', '1937', '100 million'],
   ];
 
+  const data = initialData.map((row, idx) => row.concat(idx));
+
   function clone(o) {
     return JSON.parse(JSON.stringify(o));
   }
@@ -52,6 +54,8 @@ function App() {
   const [descending, setDescending] = useState(false);
   const [editPosition, setEditPosition] = useState();
   const [edit, setEdit] = useState(false);
+  const [search, setSearch] = useState(false);
+  const [presearchData, setPresearchData] = useState();
 
   function sort(e) {
     const column = e.target.cellIndex;
@@ -87,14 +91,84 @@ function App() {
   function save(e) {
     e.preventDefault(); // prevent page reload
     const input = e.target.firstChild;
-    const data = clone(tableData);
-    data[editPosition.row][editPosition.column] = input.value;
+    const data = clone(tableData).map((row) => {
+        if (row[row.length - 1] === editPosition.row) {
+          row[editPosition.column] = input.value;
+        }
+        return row;
+    });
+    //data[editPosition.row][editPosition.column] = input.value;
+    // if (presearchData) {
+    //   const tmpData = clone(presearchData)[editPosition.row][editPosition.column] = input.value;
+    //   setPresearchData(tmpData);
+    // }
     setTableData(data);
     setEdit(false);
   }
 
+  function toggleSearch(e) {
+    if (search) {
+      setTableData(presearchData);
+    } else {
+      setPresearchData(tableData);
+    }
+
+    setSearch(!search);
+  }
+
+  function runSearch(e) {
+    const needle = e.target.value.toLowerCase();
+    if (!needle) {
+      setTableData(presearchData);
+    } else {
+      const idx = e.target.dataset.idx;
+      const searchData = presearchData.filter((row) => {
+        return row[idx].toString().toLowerCase().indexOf(needle) > -1;
+      })
+      setTableData(searchData);
+    }
+  }
+
+  function downloadCSV(e) {
+    download('csv', e);
+  }
+
+  function downloadJSON(e) {
+    download('json', e);
+  }
+
+  function download(format, ev) {
+    const data = clone(tableData).map((row) => {
+      row.pop();
+      return row;
+    });
+
+    const contents = format === 'json' 
+    ? JSON.stringify(data)
+    : data.reduce((result, row) => {
+      return (
+        result +
+        row.reduce((rowContent, cellContent, idx) => {
+          const cell = cellContent.replace(/"/g, '""');
+          const delimiter = idx < row.length - 1 ? ',' : '';
+          return `${rowContent}"${cellContent}"${delimiter}`;
+        }, '') + '\n'
+      );
+    });
+
+    const url = window.URL || window.webkitURL;
+    const blob = new Blob([contents], {type: 'text/' + format});
+    ev.target.href = URL.createObjectURL(blob);
+    ev.target.download = 'data.' + format;
+  }
+
   return (
-    <>
+    <div>
+      <button className='toolbar' onClick={toggleSearch}>
+        {search ? 'Hide Search' : 'Show Search'}
+      </button>
+      <a href='data.json' onClick={downloadJSON}>Export JSON</a>
+      <a href='data.csv' onClick={downloadCSV}>Export CSV</a>
       <table>
         <thead onClick={sort}>
           <tr> 
@@ -111,27 +185,51 @@ function App() {
           </tr>
         </thead>
         <tbody onDoubleClick={showEditor}>
-          {tableData.map((row, rowidx) => (
-            <tr key={rowidx} data-row={rowidx}>
-              {row.map((cell, columnidx) => {
+          { !search ? null : (
+              <tr onChange={runSearch}>
+                  {headers.map((_, idx) => (
+                    <td key={idx}>
+                        <input type='text' data-idx={idx}/>
+                    </td>
+                  ))}
+              </tr>
+          )
+          }
 
-                  if (edit && editPosition.row === rowidx && editPosition.column === columnidx) {
-                    cell = (
-                      <form onSubmit={save}>
-                        <input type='text' defaultValue={cell}/>
-                      </form>
-                    )   
-                  }
+          {tableData.map((row, rowidx) => {
+            // last element of data is the ID
+            const recordId = row[row.length - 1];
+            return (
+                <tr key={recordId} data-row={recordId}>
+                {row.map((cell, columnidx) => {
 
-                  return (
-                    <td key={columnidx}> {cell} </td>
-                  );
-                })}
-            </tr>
-          ))}
+                    // do not show record id in the UI
+                    if (columnidx === headers.length) {
+                      return;
+                    }
+
+                    if (
+                        edit && 
+                        editPosition.row === recordId && 
+                        editPosition.column === columnidx
+                    ) {
+                      cell = (
+                        <form onSubmit={save}>
+                          <input type='text' defaultValue={cell}/>
+                        </form>
+                      )   
+                    }
+
+                    return (
+                      <td key={columnidx}> {cell} </td>
+                    );
+                  })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
-    </>
+    </div>
   );
 }
 
